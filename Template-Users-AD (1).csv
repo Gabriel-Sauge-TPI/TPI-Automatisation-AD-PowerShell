@@ -1,0 +1,4 @@
+GivenName,Surname,Cn,Description,Password,employeeID,employeeNumber,groups
+John,Smith,John Smith,"Student, Collège Beau Soleil",,87Yh98489,T01S87Yh98489,"students_CBS;users_CBS"
+Emma,Johnson,Emma Johnson,"Teacher, Collège Beau Soleil",,12Kl48562,T02T12Kl48562,"teachers_CBS;users_CBS"
+Michael,Brown,Michael Brown,"Administration, Collège Beau Soleil",,34Uj67213,T03A34Uj67213,"administration_CBS;users_CBS"

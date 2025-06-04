@@ -35,17 +35,17 @@ Set-ExecutionPolicy RemoteSigned
 
 ### 2. Télécharger les fichiers nécessaires
 
-Déposez les fichiers suivants dans `C:\Scripts\Create-ADUsers` :
+Déposez les fichiers suivants dans `C:\Users\rg\tpi` :
 
 - `Create-ADUsers.ps1`
-- `Template-Users-AD-final-corrected.csv`
+- `Template-Users-AD.csv`
 
 ## Exécution du script
 
 Ouvrir PowerShell en mode administrateur.
 
 ```powershell
-cd C:\Scripts\Create-ADUsers
+cd C:\Users\rg\tpi
 .\Create-ADUsers.ps1
 ```
 
@@ -87,6 +87,6 @@ Get-Content creation_log.txt
 
 ## Support
 
-Yan Pianaro  
-Email : yan.pianaro@beausoleil.ch  
-Téléphone : +41 79 618 69 26  
+Gabriel Sauge
+Email : gabriel.sauge@beausoleil.ch  
+Téléphone : +41 78 205 59 14  

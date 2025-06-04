@@ -1,90 +1,94 @@
-# ==============================================
-# Script : Create-ADUsers.ps1
-# Auteur : Gabriel Sauge
-# Objectif : Automatisation création utilisateurs
-# dans Active Directory depuis un fichier CSV.
-# ==============================================
+Add-Type -AssemblyName System.Web
+Import-Module ActiveDirectory
 
-# Importer les utilisateurs depuis un fichier CSV
-$users = Import-Csv -Path "C:\Users\Administrator\Downloads\TPI\Template-Users-AD.csv"
+# Chemin vers le CSV minimaliste
+$csvPath = ".\Template-Users-AD.csv"
 
-# Boucle sur chaque utilisateur du fichier CSV
+# Importer les utilisateurs depuis CSV
+$users = Import-Csv -Path $csvPath -Delimiter ','
+
 foreach ($user in $users) {
 
-    # Importation de l'assembly nécessaire pour générer les mots de passe
-    Add-Type -AssemblyName System.Web
+    # Génération automatique des attributs
+    $GivenName = $user.GivenName
+    $Surname = $user.Surname
+    $Description = $user.Description
+    $employeeID = $user.employeeID
+    $employeeNumber = $user.employeeNumber
+    $Groups = $user.groups.Split(';')
 
-    # Vérification si un mot de passe est spécifié dans le CSV
-    if ([string]::IsNullOrWhiteSpace($user.Password)) {
-        # Génération automatique du mot de passe sécurisé (12 caractères, complexe)
-        $generatedPassword = [System.Web.Security.Membership]::GeneratePassword(12, 3)
-        Write-Host "Mot de passe généré pour $($user.Cn) :" $generatedPassword -ForegroundColor Yellow
+    # Définition de l'UPN et mailNickname selon type de compte
+    $UPNSuffix = "tpi.bs.ch"
+    if ($Description -like "*Student*") {
+        $UserPrincipalName = ($GivenName + "_" + $Surname + "@" + $UPNSuffix).ToLower()
+        $mailNickname = ($GivenName + "_" + $Surname).ToLower()
+        $extensionAttribute9 = "Student, Nord Anglia Test School 01"
+        $extensionAttribute10 = "Office365_A5_Students_withExchangeOnline"
+        $OU = "OU=Students,OU=Users,OU=TPI BS,DC=tpi,DC=bs,DC=ch"
     }
-    else {
-        # Utilisation du mot de passe spécifié dans le CSV
-        $generatedPassword = $user.Password
-        Write-Host "Mot de passe spécifié pour $($user.Cn) :" $generatedPassword -ForegroundColor Cyan
+    elseif ($Description -like "*Teacher*") {
+        $UserPrincipalName = ($GivenName + "." + $Surname + "@" + $UPNSuffix).ToLower()
+        $mailNickname = ($GivenName + "." + $Surname).ToLower()
+        $extensionAttribute9 = "Teacher, Nord Anglia Test School 01"
+        $extensionAttribute10 = "Office365_A5_Teachers_withExchangeOnline"
+        $OU = "OU=Teachers,OU=Users,OU=TPI BS,DC=tpi,DC=bs,DC=ch"
+    }
+    elseif ($Description -like "*Administration*") {
+        $UserPrincipalName = ($GivenName + "." + $Surname + "@" + $UPNSuffix).ToLower()
+        $mailNickname = ($GivenName + "." + $Surname).ToLower()
+        $extensionAttribute9 = "Administration, Nord Anglia Test School 01"
+        $extensionAttribute10 = "Office365_A5_Admins_withExchangeOnline"
+        $OU = "OU=Administration,OU=Users,OU=TPI BS,DC=tpi,DC=bs,DC=ch"
     }
 
-    # Détermination du type de compte (student ou staff) pour appliquer la nomenclature exigée
-    if ($user.groups -like "*students_CBS*") {
-        # Format prenom_nom pour les élèves
-        $accountName = ($user.GivenName + "_" + $user.Surname).ToLower()
-    }
-    else {
-        # Format prenom.nom pour les membres du staff
-        $accountName = ($user.GivenName + "." + $user.Surname).ToLower()
-    }
+    # Autres attributs automatiques
+    $Email = $UserPrincipalName
+    $Cn = "$GivenName $Surname"
+    $proxyAddresses = "SMTP:" + $Email
+    $msRTCSIPPrimaryUserAddress = "sip:" + $Email
+    $targetAddress = $Email
+    $legacyExchangeDN = "/o=BeauSoleil/ou=Exchange Administrative Group/cn=" + $mailNickname
+    $Password = ([System.Web.Security.Membership]::GeneratePassword(12,3))
 
-    # Construction automatique des attributs AD selon la nomenclature
-    $userPrincipalName = "$accountName@tpi.bs.ch"
-    $emailAddress = $userPrincipalName
+# Vérification optionnelle du sAMAccountName
+if ($user.sAMAccountName -and $user.sAMAccountName -ne "") {
+    $SamAccountName = $user.sAMAccountName
+} else {
+    $SamAccountName = $mailNickname  # valeur actuelle par défaut
+}
 
-    # Conversion du mot de passe en SecureString requis par Active Directory
-    $SecurePwd = ConvertTo-SecureString $generatedPassword -AsPlainText -Force
 
-    # Paramètres complets pour la création du compte utilisateur
-    $NewADUserParams = @{
-        GivenName         = $user.GivenName
-        Surname           = $user.Surname
-        Name              = $user.Cn
-        DisplayName       = $user.Cn
-        Description       = $user.Description
-        AccountPassword   = $SecurePwd
-        Enabled           = $true
-        SAMAccountName    = $accountName
-        UserPrincipalName = $userPrincipalName
-        EmailAddress      = $emailAddress
-        Path              = if ($user.groups -like "*administration_CBS*") {
-                                "OU=Administration,OU=CBS Users,DC=tpi,DC=bs,DC=ch"
-                            } elseif ($user.groups -like "*teachers_CBS*") {
-                                "OU=Teachers,OU=CBS Users,DC=tpi,DC=bs,DC=ch"
-                            } elseif ($user.groups -like "*students_CBS*") {
-                                "OU=Students,OU=CBS Users,DC=tpi,DC=bs,DC=ch"
-                            } else {
-                                "CN=Users,DC=tpi,DC=bs,DC=ch"
-                            }
-        OtherAttributes = @{
-            employeeID     = $user.employeeID
-            employeeNumber = $user.employeeNumber
+    # Création utilisateur AD
+    New-ADUser -Name $Cn `
+        -GivenName $GivenName `
+        -Surname $Surname `
+        -Description $Description `
+        -UserPrincipalName $UserPrincipalName `
+        -EmailAddress $Email `
+        -EmployeeID $employeeID `
+        -EmployeeNumber $employeeNumber `
+        -Path $OU `
+        -SamAccountName $SamAccountName `
+        -AccountPassword (ConvertTo-SecureString $Password -AsPlainText -Force) `
+        -Enabled $true `
+        -OtherAttributes @{
+            mailNickname=$mailNickname;
+            proxyAddresses=$proxyAddresses;
+            targetAddress=$targetAddress;
+            msRTCSIPPrimaryUserAddress=$msRTCSIPPrimaryUserAddress;
+            legacyExchangeDN=$legacyExchangeDN;
+            extensionAttribute9=$extensionAttribute9;
+            extensionAttribute10=$extensionAttribute10;
+            msExchRecipientTypeDetails=128;
+            msExchPoliciesExcluded="{26491cfc-9e50-4857-861b-0cb8df22b5d7}";
+            msExchHideFromAddressLists=$false
         }
+
+    # Ajout aux groupes AD
+    foreach ($group in $Groups) {
+        Add-ADGroupMember -Identity $group -Members $mailNickname
     }
 
-    # Tentative de création de l'utilisateur dans l'Active Directory
-    try {
-        New-ADUser @NewADUserParams
-        Write-Host "Utilisateur $($user.Cn) créé avec succès." -ForegroundColor Green
-        Write-Host "Nom du compte créé :" $accountName -ForegroundColor Cyan
-
-        # Ajouter l'utilisateur aux groupes AD spécifiés dans le CSV
-        $groups = $user.groups -split ";"
-        foreach ($group in $groups) {
-            Add-ADGroupMember -Identity $group -Members $accountName -ErrorAction Stop
-            Write-Host "Ajouté au groupe : $group" -ForegroundColor Cyan
-        }
-    }
-    catch {
-        # Affichage précis de l'erreur en cas d'échec de création
-        Write-Host "Erreur lors de la création de l'utilisateur $($user.Cn) : $_" -ForegroundColor Red
-    }
+    # Affichage pour confirmation
+    Write-Host "Utilisateur créé : $Cn | UPN: $UserPrincipalName | Mot de passe : $Password"
 }

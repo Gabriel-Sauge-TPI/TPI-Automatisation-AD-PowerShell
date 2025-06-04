@@ -1,4 +1,4 @@
 GivenName,Surname,Description,employeeID,employeeNumber,groups,sAMAccountName	
-shshshs,Gillard,"Student, CollÃ¨ge Beau Soleil",,,students_CBS	users_CBS,
-djdhdhdh,Martin,"Teacher, CollÃ¨ge Beau Soleil",12Kl48562,T02T12Kl48562,teachers_CBS	users_CBS,d.martin
-yuyzuyzy,Venries,"Administration, CollÃ¨ge Beau Soleil",34Uj67213,T03A34Uj67213,administration_CBS	users_CBS,y.venries
+Ludovic,Gillier,"Student, CollÃ¨ge Beau Soleil",,,students_CBS	users_CBS,l.gillier
+Yohan,Mudrak,"Teacher, CollÃ¨ge Beau Soleil",12Kl48562,T02T12Kl48562,teachers_CBS	users_CBS,y.mudrak
+Flavien,David,"Administration, CollÃ¨ge Beau Soleil",34Uj67213,T03A34Uj67213,administration_CBS	users_CBS,f.david
